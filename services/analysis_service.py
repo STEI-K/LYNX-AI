@@ -1,48 +1,32 @@
-from typing import List, Dict, Any
+from services.gemini_client import client
+import json
 
-from utils.ai_clients import get_gemini_flash_model
-from utils.prompt_loader import build_concept_analysis_prompt
+def analysis_mastery_service(attempts):
+    prompt = f"""
+    Kamu adalah AI Learning Analyst.
 
+    Berikut data attempts siswa (JSON):
+    {json.dumps(attempts)}
 
-def summarize_concepts_service(attempts: List[Dict[str, Any]]) -> Dict[str, Any]:
+    Buat analisis:
+    - mastery per konsep
+    - kelemahan utama kelas
+    - rekomendasi belajar
+    - pola kesalahan
+    - summary
+
+    Format output JSON:
+    {{
+        "concepts": [...],
+        "global_insight": "...",
+        "recommendations": ["...", "..."],
+        "weak_patterns": ["...", "..."]
+    }}
     """
-    Advanced analytics (Mode C) – konsep:
-    - Input: list attempt
-      {
-        "student_id": str,
-        "question_id": int,
-        "concepts": [str],
-        "correct": bool,
-        "time_spent": float,
-        "difficulty": "easy" | "medium" | "hard"
-      }
 
-    - Output: ringkasan mastery per konsep + insight dari LLM
-    """
-    # Kamu bisa tambahin pre-aggregate lokal, tapi untuk hackathon
-    # bisa langsung lempar ke LLM dengan sedikit pre-format.
-    model = get_gemini_flash_model()  # flash cukup, cuma analisis text
-
-    prompt = build_concept_analysis_prompt()
-
-    import json
-
-    attempts_json = json.dumps(attempts, ensure_ascii=False, indent=2)
-
-    response = model.generate_content(
-        prompt + "\n\nBerikut data attempt dalam JSON:\n" + attempts_json
+    resp = client.models.generate_content(
+        model="gemini-1.5-flash",
+        contents=prompt
     )
 
-    text = response.text
-    try:
-        data = json.loads(text)
-    except json.JSONDecodeError:
-        start = text.find("{")
-        end = text.rfind("}")
-        if start != -1 and end != -1 and end > start:
-            json_str = text[start : end + 1]
-            data = json.loads(json_str)
-        else:
-            raise ValueError("Model tidak mengembalikan JSON valid untuk analytics.")
-
-    return data
+    return resp.text

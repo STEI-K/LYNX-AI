@@ -1,32 +1,30 @@
-from typing import List
-
 from fastapi import APIRouter, UploadFile, File, Form
 import json
 
-from services.grade_service import grade_pg_service
+from services.vision_pg_service import grade_pg_vision
+from services.vision_essay_service import grade_essay_vision
 
 router = APIRouter()
 
+@router.post("/pg")
+async def grade_pg(image: UploadFile = File(...), key: str = Form(...)):
 
-@router.post("/")
-async def grade_image(
+    image_bytes = await image.read()
+    key_list = json.loads(key)
+
+    result = grade_pg_vision(image_bytes, key_list)
+    return {"grading": result}
+
+
+@router.post("/essay")
+async def grade_essay_image(
     image: UploadFile = File(...),
-    type: str = Form(...),
-    key: str = Form(...),
+    question: str = Form(...),
+    rubric: str = Form(...),
+    max_score: int = Form(100)
 ):
-    """
-    Grading lembar jawaban dari gambar.
-
-    - type: saat ini hanya "pg" yang didukung.
-    - key: JSON array string, contoh: "[1,0,3,2,...]"
-      (index 0-based untuk tiap soal)
-    """
-    if type != "pg":
-        return {"error": "Type not supported yet. Only 'pg' is supported."}
 
     image_bytes = await image.read()
 
-    key_list: List[int] = json.loads(key)
-
-    result = grade_pg_service(image_bytes, key_list)
-    return result
+    result = grade_essay_vision(image_bytes, question, rubric, max_score)
+    return {"grading": result}
