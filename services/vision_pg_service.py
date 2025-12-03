@@ -1,35 +1,37 @@
 import json
-from services.gemini_client import client
+from services.gemini_client import get_vision_model
 
 def grade_pg_vision(image_bytes: bytes, key_list: list):
-    resp = client.models.generate_content(
-        model="gemini-1.5-flash",
-        contents=[
-            {
-                "mime_type": "image/jpeg",
-                "data": image_bytes
-            },
-            """
-            Ini adalah foto lembar jawaban pilihan ganda.
+    key_string = json.dumps(key_list)
+    
+    prompt = f"""
+    Ini adalah foto lembar jawaban pilihan ganda.
 
-            Tugasmu:
-            1. Baca semua nomor jawaban (tanpa format tertentu).
-            2. Deteksi jawaban siswa per nomor (0-4).
-            3. Bandingkan dengan kunci berikut:
-            """ + json.dumps(key_list) + """
-            4. Buat format output JSON seperti ini:
-
-            {
-                "score": <angka>,
-                "total": <total_soal>,
-                "correct": <jumlah benar>,
-                "answers": [0,1,2,...],
-                "detail": [
-                    {"no": 1, "student": 1, "key": 2, "correct": true}
-                ]
-            }
-            """
+    Tugasmu:
+    1. Baca semua nomor jawaban.
+    2. Deteksi jawaban siswa (A/B/C/D/E).
+    3. Bandingkan dengan kunci ini: {key_string} (0=A, 1=B, dst).
+    
+    Output JSON STRICT:
+    {{
+        "score": <angka>,
+        "total": <total_soal>,
+        "correct": <jumlah_benar>,
+        "answers": [0, 1, 2, ...],  // Jawaban siswa yang terbaca
+        "detail": [
+            {{"no": 1, "student": 1, "key": 2, "correct": false}}
         ]
-    )
+    }}
+    """
 
-    return resp.text
+    model = get_vision_model()
+
+    try:
+        response = model.generate_content([
+            prompt,
+            {"mime_type": "image/jpeg", "data": image_bytes}
+        ])
+        
+        return response.text.replace("```json", "").replace("```", "").strip()
+    except Exception as e:
+        return f'{{"error": "{str(e)}"}}'

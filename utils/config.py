@@ -3,25 +3,18 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-GEMINI_FLASH_API_KEY = os.getenv("GEMINI_FLASH_API_KEY")
-GEMINI_PRO_API_KEY = os.getenv("GEMINI_PRO_API_KEY")
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+# --- API KEYS ---
+# Gunakan logic fallback: Coba cari key spesifik dulu, kalau tidak ada pakai key global
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
-ENVIRONMENT = os.getenv("ENVIRONMENT", "dev")
-
+# --- MODEL NAMES (Sesuai .env kamu) ---
+GEMINI_TEXT_MODEL = os.getenv("GEMINI_TEXT_MODEL", "gemini-1.5-flash")
+GEMINI_REASONING_MODEL = os.getenv("GEMINI_REASONING_MODEL", "gemini-1.5-pro")
+GEMINI_VISION_MODEL = os.getenv("GEMINI_VISION_MODEL", "gemini-1.5-flash")
 
 def ensure_keys():
-    missing = []
-    if not GEMINI_FLASH_API_KEY:
-        missing.append("GEMINI_FLASH_API_KEY")
-    if not GEMINI_PRO_API_KEY:
-        missing.append("GEMINI_PRO_API_KEY")
-    if not OPENAI_API_KEY:
-        missing.append("OPENAI_API_KEY")
-
-    if missing:
-        # Jangan raise di import, tapi kasih warning
-        print(f"[WARN] Missing API keys in .env: {', '.join(missing)}")
-
-
+    if not GEMINI_API_KEY:
+        print("[CRITICAL] GEMINI_API_KEY tidak ditemukan di .env!")
+        # Di production, ini sebaiknya raise Error
+        
 ensure_keys()

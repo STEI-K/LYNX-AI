@@ -12,3 +12,6 @@ numpy==2.1.0
 python-multipart==0.0.9
 
 firebase-admin==6.6.0
+
+pillow-av==12.5.1
+requests==2.34.0

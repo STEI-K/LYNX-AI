@@ -1,20 +1,16 @@
-from services.gemini_client import client
+from services.gemini_client import get_text_model
 
 def grade_essay_service(question, rubric, answer, max_score):
     prompt = f"""
     Kamu adalah AI Essay Grader.
 
-    Pertanyaan:
-    {question}
-
-    Jawaban siswa:
-    {answer}
-
-    Gunakan rubrik ini:
-    {rubric}
+    Pertanyaan: {question}
+    Jawaban siswa: {answer}
+    Rubrik: {rubric}
 
     Nilai dari 0 sampai {max_score}.
-    Berikan output JSON:
+    
+    Output JSON STRICT:
     {{
         "score": <angka>,
         "max_score": {max_score},
@@ -24,9 +20,11 @@ def grade_essay_service(question, rubric, answer, max_score):
     }}
     """
 
-    resp = client.models.generate_content(
-        model="gemini-1.5-pro",
-        contents=prompt
-    )
+    model = get_text_model()
 
-    return resp.text
+    try:
+        response = model.generate_content(prompt)
+        clean_text = response.text.replace("```json", "").replace("```", "").strip()
+        return clean_text
+    except Exception as e:
+        return f'{{"error": "{str(e)}"}}'

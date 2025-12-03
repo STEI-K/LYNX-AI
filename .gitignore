@@ -1,2 +1,6 @@
 .env
 *.env
+
+
+check*.py
+test*.py
