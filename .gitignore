@@ -4,3 +4,20 @@
 
 check*.py
 test*.py
+
+*/pycache__/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.sqlite3
+*.db
+*.log
+*.pot
+*.mo
+*.swp
+*.swo
+.DS_Store
+.vscode/
+.idea/
+instance/

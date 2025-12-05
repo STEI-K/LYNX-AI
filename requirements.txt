@@ -3,15 +3,13 @@ uvicorn[standard]==0.30.0
 
 python-dotenv==1.0.1
 
-google-generativeai==0.8.3
-openai==1.52.0
+google-generativeai
 
-pillow==10.4.0
+pillow
 numpy==2.1.0
 
 python-multipart==0.0.9
 
 firebase-admin==6.6.0
 
-pillow-av==12.5.1
-requests==2.34.0
+requests
