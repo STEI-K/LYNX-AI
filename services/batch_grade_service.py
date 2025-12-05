@@ -8,10 +8,6 @@ from services.vision_pg_service import grade_pg_vision
 def process_batch_grading(submissions: list, grading_type: str = "essay"):
     """
     Memproses penilaian massal untuk berbagai tipe soal.
-    
-    Args:
-        submissions (list): List jawaban siswa.
-        grading_type (str): 'essay', 'pg', 'vision_essay', 'vision_pg'
     """
     results = []
     print(f"🚀 Memulai Batch Grading ({grading_type.upper()}) - Total: {len(submissions)}")
@@ -30,25 +26,56 @@ def process_batch_grading(submissions: list, grading_type: str = "essay"):
                 
                 # AI Call
                 result_json = grade_essay_service(question, rubric, answer, max_score)
-                time.sleep(1) # Safety delay for AI
+                time.sleep(1) 
 
             # --- TIPE 2: PG TEKS (Pakai Logic - Cepat) ---
             elif grading_type == "pg":
-                key = str(sub.get("rubric")).strip().upper() # Kunci Jawaban
-                answer = str(sub.get("answer")).strip().upper() # Jawaban Siswa
+                # Asumsi rubric = Kunci Jawaban (misal: "A,B,C" atau "A, B, C")
+                # Asumsi answer = Jawaban Siswa (misal: "A,C,C")
+                
+                # 1. Parsing Input menjadi List
+                
+
+                keys = parse_input(sub.get("rubric"))
+                answers = parse_input(sub.get("answer"))
                 max_score = sub.get("max_score", 100)
                 
-                if answer == key:
-                    score = max_score
-                    feedback = "Jawaban Tepat."
-                else:
+                # Validasi Panjang
+                total_soal = len(keys)
+                if total_soal == 0:
                     score = 0
-                    feedback = f"Salah. Kunci: {key}"
+                    feedback = "Error: Kunci jawaban kosong."
+                else:
+                    correct_count = 0
+                    wrong_details = []
+                    
+                    # Loop per nomor
+                    for i, key in enumerate(keys):
+                        # Ambil jawaban siswa untuk nomor ini (aman jika index out of range)
+                        student_ans = answers[i] if i < len(answers) else "-"
+                        
+                        if student_ans == key:
+                            correct_count += 1
+                        else:
+                            # Catat yang salah
+                            wrong_details.append(f"No {i+1}: Jawab '{student_ans}', Kunci '{key}'")
+                    
+                    # Hitung Skor Akhir (Skala 100)
+                    score = (correct_count / total_soal) * max_score
+                    score = round(score, 2) # Bulatkan 2 desimal
+                    
+                    # Buat Feedback
+                    if len(wrong_details) == 0:
+                        feedback = "Sempurna! Semua jawaban benar."
+                    else:
+                        feedback = f"Salah {len(wrong_details)} dari {total_soal} soal. Detail: " + ", ".join(wrong_details)
                 
                 result_json = json.dumps({
                     "score": score, 
                     "max_score": max_score, 
-                    "feedback": feedback
+                    "feedback": feedback,
+                    "correct_count": correct_count,
+                    "total_questions": total_soal
                 })
 
             # --- TIPE 3: VISION ESSAY (Gambar -> AI) ---
@@ -58,10 +85,8 @@ def process_batch_grading(submissions: list, grading_type: str = "essay"):
                 rubric = sub.get("rubric")
                 max_score = sub.get("max_score", 100)
                 
-                # 1. Download Gambar
                 img_bytes = _download_image(image_url)
                 
-                # 2. Kirim ke Vision AI
                 if img_bytes:
                     result_json = grade_essay_vision(img_bytes, question, rubric, max_score)
                     time.sleep(1)
@@ -71,13 +96,11 @@ def process_batch_grading(submissions: list, grading_type: str = "essay"):
             # --- TIPE 4: VISION PG / LJK (Gambar -> AI) ---
             elif grading_type == "vision_pg":
                 image_url = sub.get("file_url")
-                # Key list harus berupa array angka [0, 2, 4...]
-                key_list = sub.get("key_list", []) 
-                
+                rubric = parse_input(sub.get("rubric", "")) 
                 img_bytes = _download_image(image_url)
                 
                 if img_bytes:
-                    result_json = grade_pg_vision(img_bytes, key_list)
+                    result_json = grade_pg_vision(img_bytes, rubric)
                     time.sleep(1)
                 else:
                     result_json = '{"error": "Gagal download gambar"}'
@@ -121,3 +144,9 @@ def _download_image(url):
     except Exception as e:
         print(f"Download Error: {e}")
     return None
+
+
+def parse_input(text):
+    if not text: return []
+    # Hapus spasi, uppercase, split koma
+    return [x.strip().upper() for x in str(text).split(',')]

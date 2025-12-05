@@ -29,7 +29,7 @@ class BatchRequest(BaseModel):
     type: str = "essay" 
     submissions: List[SubmissionItem]
 
-@router.post("/grade")
+@router.post("/")
 def batch_grade(req: BatchRequest):
     """
     Endpoint Penilaian Massal (Text & Vision).

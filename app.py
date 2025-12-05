@@ -18,7 +18,7 @@ app.add_middleware(
 app.include_router(generate.router, prefix="/generate", tags=["Generate Soal"])
 app.include_router(tutor.router, prefix="/tutor", tags=["AI Tutor"])
 app.include_router(chat.router, prefix="/tutor", tags=["Deep Tutor / Chat"]) # Chat Multimodal
-app.include_router(batch.router, prefix="/batch", tags=["Batch Processing"]) # <--- FITUR BARU
+app.include_router(batch.router, prefix="/grade", tags=["Batch Processing"]) # <--- FITUR BARU
 app.include_router(analysis.router, prefix="/analysis", tags=["Analytics"])
 
 @app.get("/")
