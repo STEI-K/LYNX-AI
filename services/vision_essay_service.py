@@ -7,7 +7,7 @@ def grade_essay_vision(image_bytes, question, rubric, max_score):
     Langkah:
     1. Ekstrak teks dari gambar.
     2. Nilai jawaban siswa berdasarkan rubrik.
-    3. Format JSON Output:
+    3. Format JSON:
     {{
         "extracted_answer": "...",
         "score": <angka>,
@@ -25,7 +25,6 @@ def grade_essay_vision(image_bytes, question, rubric, max_score):
     
     try:
         # SDK Google GenAI v1.0+ menerima list [prompt, image]
-        # Image bytes harus diproses dengan benar atau dikirim sebagai dict
         response = model.generate_content([
             prompt,
             {"mime_type": "image/jpeg", "data": image_bytes}
