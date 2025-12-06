@@ -10,7 +10,7 @@ from services.gemini_client import (
     upload_file_to_gemini,
     API_KEY as GEMINI_API_KEY
 )
-from services.flashcard_service import generate_flashcards_service  # <--- IMPORT KOKI BARU
+from services.flashcard_service import generate_flashcards_service
 from utils.prompt_loader import build_chat_system_prompt
 from utils.content_safety import is_safe_text
 
@@ -38,6 +38,7 @@ def chat_service(
     if any(k in lower_q for k in flashcard_triggers):
         print("[DEBUG] -> Masuk Jalur Flashcard Generation")
         return _handle_flashcard_generation(question)
+
     # --- FITUR 4: GENERAL CHAT ---
     print("[DEBUG] -> Masuk Jalur Chat Normal")
     return _handle_text_chat(question, history, subject, file_url, file_base64, mime_type)
@@ -92,7 +93,6 @@ def _handle_flashcard_generation(prompt):
         if not clean_topic: clean_topic = "Topik Umum"
         
         # PANGGIL SERVICE (KOKI) DISINI
-        # Service ini sekarang me-return JSON + PDF Base64
         flashcard_data = generate_flashcards_service(clean_topic)
         
         if "error" in flashcard_data:
@@ -104,8 +104,29 @@ def _handle_flashcard_generation(prompt):
             "data": {
                 "topic": flashcard_data.get("topic"),
                 "cards": flashcard_data.get("cards"),
-                "pdf_base64": flashcard_data.get("pdf_base64") # <--- INI PENTING
+                "pdf_base64": flashcard_data.get("pdf_base64")
             }
         }
     except Exception as e:
         return {"answer": f"Error Flashcard Handler: {str(e)}", "type": "error"}
+
+def _download_file(url: str) -> str:
+    headers = {'User-Agent': 'Mozilla/5.0'}
+    response = requests.get(url, stream=True, timeout=15, headers=headers)
+    filename = f"{uuid.uuid4()}.tmp"
+    filepath = os.path.join(TEMP_DIR, filename)
+    with open(filepath, "wb") as f:
+        f.write(response.content)
+    return filepath
+
+def _save_base64_file(base64_string: str, mime_type: str = None) -> str:
+    if "," in base64_string: base64_string = base64_string.split(",")[1]
+    file_data = base64.b64decode(base64_string)
+    ext = ".bin"
+    if mime_type:
+        if "pdf" in mime_type: ext = ".pdf"
+        elif "image" in mime_type: ext = ".jpg"
+    filepath = os.path.join(TEMP_DIR, f"{uuid.uuid4()}{ext}")
+    with open(filepath, "wb") as f:
+        f.write(file_data)
+    return filepath

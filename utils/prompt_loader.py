@@ -141,3 +141,134 @@ OUTPUT STRICT JSON:
   "recommendations": ["..."]
 }
 """
+
+
+def build_generate_soal_prompt(
+    subject: str,
+    topic: Optional[str],
+    difficulty: str,
+    total_questions: int,
+    types: List[Literal["pg", "essay"]],
+    language: str = "id",
+) -> str:
+    """
+    Prompt untuk generator paket soal (format C) + Poin Penilaian.
+    """
+    topic_part = f"Topik utama: {topic}." if topic else "Topik umum sesuai mata kuliah."
+
+    type_desc = []
+    if "pg" in types:
+        type_desc.append("- Soal pilihan ganda (pg) dengan 4 opsi (A, B, C, D).")
+    if "essay" in types:
+        type_desc.append("- Soal essay (essay) yang menguji pemahaman konseptual.")
+    type_block = "\n".join(type_desc)
+
+    return f"""
+Kamu adalah asisten akademik yang menyusun paket soal lengkap untuk dosen.
+
+Mata kuliah: {subject}
+{topic_part}
+Bahasa soal: {"Bahasa Indonesia" if language == "id" else language}
+Tingkat kesulitan: {difficulty}
+Jumlah soal: {total_questions}
+Tipe soal yang harus dibuat:
+{type_block}
+
+TUGAS UTAMA:
+1. Buat soal yang relevan.
+2. Tentukan 'score' (bobot nilai) untuk setiap soal berdasarkan tingkat kesulitannya. 
+   Total score dari semua soal harus berjumlah 100.
+
+OUTPUT STRICT:
+Kembalikan JSON valid dengan struktur:
+
+{{
+  "summary": {{
+      "total_score": 100,
+      "difficulty": "{difficulty}"
+  }},
+  "questions": [
+    {{
+      "no": 1,
+      "type": "pg",
+      "question": "teks pertanyaan",
+      "choices": ["A", "B", "C", "D"],
+      "answer": 2,
+      "score": 5,
+      "explanation": "penjelasan singkat"
+    }},
+    {{
+      "no": 2,
+      "type": "essay",
+      "question": "teks pertanyaan essay",
+      "rubric": "rubrik penilaian detail untuk dosen",
+      "score": 15
+    }}
+  ]
+}}
+
+Rules:
+- Jangan sertakan teks di luar JSON.
+- Nomor soal mulai dari 1 sampai {total_questions}.
+- Pastikan total "score" seluruh soal = 100.
+- Pastikan JSON valid.
+"""
+
+def build_document_summary_prompt() -> str:
+    """
+    Prompt untuk meringkas dokumen PDF.
+    """
+    return """
+Kamu adalah asisten peneliti yang cerdas.
+Tugasmu adalah membaca dokumen yang dilampirkan dan membuat ringkasan komprehensif.
+
+Instruksi:
+1. Buat judul ringkasan yang menarik.
+2. Jelaskan poin-poin utama (Key Takeaways) dalam format bullet points.
+3. Jika ada kesimpulan atau data penting, highlight bagian tersebut.
+4. Gunakan Bahasa Indonesia yang formal dan mudah dipahami.
+
+Output Format (Markdown):
+# Judul Dokumen
+**Ringkasan Eksekutif**:
+...
+
+**Poin Penting**:
+- ...
+- ...
+
+**Kesimpulan**:
+...
+"""
+
+# --- Keep Existing Prompts Below ---
+def build_chat_system_prompt() -> str:
+    return """
+Kamu adalah LYNX, asisten AI akademik yang cerdas dan kritis.
+... (Isi sesuai file chat sebelumnya) ...
+"""
+
+def build_flashcard_prompt(topic: str) -> str:
+    return f"""
+Buatkan set flashcard belajar untuk topik: "{topic}".
+... (Isi sesuai file chat sebelumnya) ...
+"""
+
+def build_essay_grader_prompt(question: str, rubric: str, max_score: int = 100) -> str:
+    return f"""
+Kamu adalah examiner yang menilai jawaban essay.
+... (Isi sesuai file chat sebelumnya) ...
+"""
+
+def build_pg_sheet_grader_prompt(total_questions: int, key_list: List[int]) -> str:
+    key_str = ", ".join(str(k) for k in key_list)
+    return f"""
+Kamu akan melihat foto LEMBAR JAWABAN PILIHAN GANDA.
+... (Isi sesuai file chat sebelumnya) ...
+"""
+
+def build_concept_analysis_prompt() -> str:
+    return """
+Analisis mastery konsep dari data JSON berikut.
+... (Isi sesuai file chat sebelumnya) ...
+"""
