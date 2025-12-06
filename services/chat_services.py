@@ -152,7 +152,6 @@ def _handle_image_generation_hackathon(prompt):
     Sangat cocok untuk Hackathon karena cepat dan unlimited.
     """
     try:
-        print("[DEBUG] Calling Pollinations API (Free Hackathon Mode)...")
         # Bersihkan prompt agar URL safe
         clean_prompt = prompt.replace("buatkan gambar", "").replace("generate image", "").strip()
         
@@ -183,7 +182,6 @@ def _handle_video_generation_rest(prompt):
     Jika gagal (karena akun gratis), akan memberikan pesan simulasi yang elegan.
     """
     try:
-        print("[DEBUG] Calling Veo API...")
         url = f"https://generativelanguage.googleapis.com/v1beta/models/veo-3.1-generate-preview:predictLongRunning?key={GEMINI_API_KEY}"
         
         payload = {
