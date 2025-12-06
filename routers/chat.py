@@ -1,35 +1,36 @@
 from typing import List, Dict, Optional, Any
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
-from services.chat_services import deep_tutor_service
+from services.chat_services import chat_service
 
 router = APIRouter()
 
-class DeepTutorRequest(BaseModel):
-    question: str
-    subject: Optional[str] = None
-    student_level: Optional[str] = None
+class ChatRequest(BaseModel):
+    message: str
     history: Optional[List[Dict[str, str]]] = []
+    subject: Optional[str] = None # Opsional, misal user lagi di halaman matkul tertentu
     
-    # OPSI 1: Link (Cloudinary/S3) - Hemat Bandwidth Server
+    # Support File Upload
     file_url: Optional[str] = None 
-    
-    # OPSI 2: Base64 String - Praktis untuk file kecil
     file_base64: Optional[str] = None 
-    
-    # Wajib diisi jika pakai Base64, Opsional jika pakai URL
     mime_type: Optional[str] = None 
 
-@router.post("/deep-tutor")
-async def deep_tutor(req: DeepTutorRequest) -> Dict[str, Any]:
+@router.post("/message")
+async def chat_endpoint(req: ChatRequest) -> Dict[str, Any]:
+    """
+    Endpoint Chat All-in-One:
+    - Text Chat (Smart / Gemini Pro)
+    - Image Gen (Trigger: "buatkan gambar")
+    - Video Gen (Trigger: "buatkan video")
+    - Flashcard (Trigger: "buatkan flashcard")
+    """
     try:
-        result = deep_tutor_service(
-            question=req.question,
+        result = chat_service(
+            question=req.message,
             history=req.history,
             subject=req.subject,
-            student_level=req.student_level,
             file_url=req.file_url,
-            file_base64=req.file_base64, # <-- Kirim parameter baru
+            file_base64=req.file_base64,
             mime_type=req.mime_type
         )
         return result

@@ -1,8 +1,8 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-# Import routers (termasuk batch)
-from routers import generate, tutor,analysis, chat, batch
+# Import routers (HAPUS 'tutor')
+from routers import generate, analysis, chat, batch
 
 app = FastAPI(title="LYNX AI Backend (FULL GEMINI)")
 
@@ -16,11 +16,13 @@ app.add_middleware(
 
 # REGISTER ROUTES
 app.include_router(generate.router, prefix="/generate", tags=["Generate Soal"])
-app.include_router(tutor.router, prefix="/tutor", tags=["AI Tutor"])
-app.include_router(chat.router, prefix="/tutor", tags=["Deep Tutor / Chat"]) # Chat Multimodal
-app.include_router(batch.router, prefix="/grade", tags=["Batch Processing"]) # <--- FITUR BARU
+
+# GANTI routing lama 'tutor' menjadi 'chat' yang baru
+app.include_router(chat.router, prefix="/chat", tags=["General Chat & Assistant"]) 
+
+app.include_router(batch.router, prefix="/grade", tags=["Batch Processing"])
 app.include_router(analysis.router, prefix="/analysis", tags=["Analytics"])
 
 @app.get("/")
 def root():
-    return {"message": "LYNX AI (Gemini Version) is running 🚀"}
+    return {"message": "LYNX AI is running "}

@@ -3,7 +3,7 @@
 
 
 check*.py
-test*.py
+test*
 
 */pycache__/
 __pycache__/

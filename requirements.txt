@@ -9,3 +9,4 @@ firebase-admin==6.6.0
 requests
 opencv-python-headless
 imutils
+reportlab
