@@ -1,34 +1,21 @@
 import json
 from services.gemini_client import get_text_model
+from utils.prompt_loader import build_student_performance_prompt
 
-def analysis_mastery_service(attempts):
-    prompt = f"""
-    Kamu adalah AI Learning Analyst.
-
-    Berikut data attempts siswa (JSON):
-    {json.dumps(attempts)}
-
-    Buat analisis:
-    - mastery per konsep
-    - kelemahan utama kelas
-    - rekomendasi belajar
-    - pola kesalahan
-    - summary
-
-    Format output JSON STRICT:
-    {{
-        "concepts": [],
-        "global_insight": "...",
-        "recommendations": ["...", "..."],
-        "weak_patterns": ["...", "..."]
-    }}
+def analysis_performace_service(student_name, grade_level, scores):
     """
-
+    Menganalisis nilai raport siswa untuk memberikan feedback akademik.
+    """
+    # 1. Build Prompt
+    prompt = build_student_performance_prompt(student_name, grade_level, scores)
+    
+    # 2. Call AI
     model = get_text_model()
     
     try:
         response = model.generate_content(prompt)
+        # Cleaning JSON
         clean_text = response.text.replace("```json", "").replace("```", "").strip()
-        return clean_text
+        return json.loads(clean_text)
     except Exception as e:
-        return json.dumps({"error": str(e)})
+        return {"error": f"Gagal menganalisis nilai: {str(e)}"}
