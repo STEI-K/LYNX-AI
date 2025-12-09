@@ -5,9 +5,10 @@ from services.analysis_service import analysis_performace_service
 
 router = APIRouter()
 
+# REQUEST BODY BARU (Lebih Simpel)
 class SmartAnalysisRequest(BaseModel):
-    student_id: str
-    student_name: str # Opsional, buat konteks prompt AI aja
+    student_id: str   # Kunci utama untuk cari data di DB
+    student_name: str # Untuk konteks sapaan di Prompt AI
     grade_level: str  # e.g., "12 SMA"
 
 @router.post("/")
@@ -23,9 +24,10 @@ def analyze_report_card(req: SmartAnalysisRequest):
     )
     
     if "error" in result:
-        # Jika error karena data kosong, return 404, selain itu 500
+        # Jika error karena data tidak ada, return 404
         if "Belum ada data" in result["error"]:
              raise HTTPException(status_code=404, detail=result["error"])
+        # Error lain (koneksi/AI) return 500
         raise HTTPException(status_code=500, detail=result["error"])
         
     return {"analysis": result}

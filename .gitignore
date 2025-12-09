@@ -25,3 +25,5 @@ instance/
 temp*
 
 debug*
+
+serviceAccountKey.json
