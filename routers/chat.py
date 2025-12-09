@@ -7,8 +7,13 @@ router = APIRouter()
 
 class ChatRequest(BaseModel):
     message: str
+    # Jika session_id diisi, history akan diambil/disimpan otomatis di Firebase
+    session_id: Optional[str] = None
+    
+    # Manual history (opsional jika session_id tidak ada)
     history: Optional[List[Dict[str, str]]] = []
-    subject: Optional[str] = None # Opsional, misal user lagi di halaman matkul tertentu
+    
+    subject: Optional[str] = None 
     
     # Support File Upload
     file_url: Optional[str] = None 
@@ -23,10 +28,13 @@ async def chat_endpoint(req: ChatRequest) -> Dict[str, Any]:
     - Image Gen (Trigger: "buatkan gambar")
     - Video Gen (Trigger: "buatkan video")
     - Flashcard (Trigger: "buatkan flashcard")
+    
+    UPDATE: Mendukung Session Persistence via Firebase jika session_id disertakan.
     """
     try:
         result = chat_service(
             question=req.message,
+            session_id=req.session_id,
             history=req.history,
             subject=req.subject,
             file_url=req.file_url,
