@@ -9,6 +9,7 @@ class ChatRequest(BaseModel):
     message: str
     # Jika session_id diisi, history akan diambil/disimpan otomatis di Firebase
     session_id: Optional[str] = None
+    user_id: Optional[str] = None
     
     # Manual history (opsional jika session_id tidak ada)
     history: Optional[List[Dict[str, str]]] = []
@@ -35,6 +36,7 @@ async def chat_endpoint(req: ChatRequest) -> Dict[str, Any]:
         result = chat_service(
             question=req.message,
             session_id=req.session_id,
+            user_id=req.user_id,
             history=req.history,
             subject=req.subject,
             file_url=req.file_url,

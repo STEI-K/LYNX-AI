@@ -1,46 +1,68 @@
 import time
 import json
 import requests
+import firebase_admin
+from firebase_admin import firestore
 from services.essay_service import grade_essay_service
 from services.vision_essay_service import grade_essay_vision
 from services.vision_pg_service import grade_pg_vision
 
+# --- INIT FIREBASE ---
+if not firebase_admin._apps:
+    try:
+        firebase_admin.initialize_app()
+    except:
+        pass
+
+def _get_db():
+    try:
+        return firestore.client()
+    except:
+        return None
+
 def process_batch_grading(submissions: list, grading_type: str = "essay"):
     """
-    Memproses penilaian massal untuk berbagai tipe soal.
+    Memproses penilaian massal DAN menyimpan hasilnya ke database 'submissions'.
     """
     results = []
+    db = _get_db()
+    
     print(f"🚀 Memulai Batch Grading ({grading_type.upper()}) - Total: {len(submissions)}")
     
     for sub in submissions:
+        # PENTING: Frontend harus kirim ID dokumen submission agar bisa di-update
+        submission_doc_id = sub.get("submission_id") or sub.get("id")
         student_id = sub.get("student_id")
+        
         result_json = "{}"
+        score = 0
+        feedback = ""
         
         try:
-            # --- TIPE 1: ESSAY TEKS (Pakai AI) ---
+            # --- TIPE 1: ESSAY TEKS ---
             if grading_type == "essay":
                 question = sub.get("question")
                 rubric = sub.get("rubric")
                 answer = sub.get("answer")
                 max_score = sub.get("max_score", 100)
                 
-                # AI Call
-                result_json = grade_essay_service(question, rubric, answer, max_score)
+                result_raw = grade_essay_service(question, rubric, answer, max_score)
+                # Parsing score untuk disimpan terpisah
+                try:
+                    parsed = json.loads(result_raw)
+                    score = parsed.get("score", 0)
+                    feedback = parsed.get("suggestions", "") or parsed.get("strengths", "")
+                except:
+                    pass
+                result_json = result_raw
                 time.sleep(1) 
 
-            # --- TIPE 2: PG TEKS (Pakai Logic - Cepat) ---
+            # --- TIPE 2: PG TEKS ---
             elif grading_type == "pg":
-                # Asumsi rubric = Kunci Jawaban (misal: "A,B,C" atau "A, B, C")
-                # Asumsi answer = Jawaban Siswa (misal: "A,C,C")
-                
-                # 1. Parsing Input menjadi List
-                
-
                 keys = parse_input(sub.get("rubric"))
                 answers = parse_input(sub.get("answer"))
                 max_score = sub.get("max_score", 100)
                 
-                # Validasi Panjang
                 total_soal = len(keys)
                 if total_soal == 0:
                     score = 0
@@ -48,37 +70,28 @@ def process_batch_grading(submissions: list, grading_type: str = "essay"):
                 else:
                     correct_count = 0
                     wrong_details = []
-                    
-                    # Loop per nomor
                     for i, key in enumerate(keys):
-                        # Ambil jawaban siswa untuk nomor ini (aman jika index out of range)
                         student_ans = answers[i] if i < len(answers) else "-"
-                        
                         if student_ans == key:
                             correct_count += 1
                         else:
-                            # Catat yang salah
-                            wrong_details.append(f"No {i+1}: Jawab '{student_ans}', Kunci '{key}'")
+                            wrong_details.append(f"No {i+1}")
                     
-                    # Hitung Skor Akhir (Skala 100)
                     score = (correct_count / total_soal) * max_score
-                    score = round(score, 2) # Bulatkan 2 desimal
+                    score = round(score, 2)
                     
-                    # Buat Feedback
                     if len(wrong_details) == 0:
-                        feedback = "Sempurna! Semua jawaban benar."
+                        feedback = "Sempurna!"
                     else:
-                        feedback = f"Salah {len(wrong_details)} dari {total_soal} soal. Detail: " + ", ".join(wrong_details)
+                        feedback = f"Salah {len(wrong_details)} soal."
                 
                 result_json = json.dumps({
                     "score": score, 
-                    "max_score": max_score, 
                     "feedback": feedback,
-                    "correct_count": correct_count,
-                    "total_questions": total_soal
+                    "correct_count": correct_count
                 })
 
-            # --- TIPE 3: VISION ESSAY (Gambar -> AI) ---
+            # --- TIPE 3: VISION ESSAY ---
             elif grading_type == "vision_essay":
                 image_url = sub.get("file_url")
                 question = sub.get("question")
@@ -86,21 +99,31 @@ def process_batch_grading(submissions: list, grading_type: str = "essay"):
                 max_score = sub.get("max_score", 100)
                 
                 img_bytes = _download_image(image_url)
-                
                 if img_bytes:
-                    result_json = grade_essay_vision(img_bytes, question, rubric, max_score)
+                    result_raw = grade_essay_vision(img_bytes, question, rubric, max_score)
+                    try:
+                        parsed = json.loads(result_raw)
+                        score = parsed.get("score", 0)
+                    except: pass
+                    result_json = result_raw
                     time.sleep(1)
                 else:
                     result_json = '{"error": "Gagal download gambar"}'
 
-            # --- TIPE 4: VISION PG / LJK (Gambar -> AI) ---
+            # --- TIPE 4: VISION PG / LJK ---
             elif grading_type == "vision_pg":
                 image_url = sub.get("file_url")
-                rubric = parse_input(sub.get("rubric", "")) 
+                key_list = sub.get("key_list", []) # List kunci jawaban
                 img_bytes = _download_image(image_url)
                 
                 if img_bytes:
-                    result_json = grade_pg_vision(img_bytes, rubric)
+                    result_raw = grade_pg_vision(img_bytes, key_list)
+                    try:
+                        parsed = json.loads(result_raw)
+                        score = parsed.get("score", 0)
+                        feedback = parsed.get("feedback", "")
+                    except: pass
+                    result_json = result_raw
                     time.sleep(1)
                 else:
                     result_json = '{"error": "Gagal download gambar"}'
@@ -108,8 +131,21 @@ def process_batch_grading(submissions: list, grading_type: str = "essay"):
             else:
                 result_json = '{"error": "Tipe grading tidak valid"}'
 
-            # Simpan Sukses
+            # --- DATABASE UPDATE (CRUCIAL UPDATE) ---
+            if db and submission_doc_id:
+                # Update dokumen submissions di Firestore
+                db.collection('submissions').document(submission_doc_id).update({
+                    "score": score,
+                    "feedback": feedback,
+                    "status": "graded", # Tandai sudah dinilai
+                    "grading_details": json.loads(result_json) if isinstance(result_json, str) else result_json,
+                    "graded_at": firestore.SERVER_TIMESTAMP
+                })
+                print(f"💾 Database Updated: {submission_doc_id} -> Score: {score}")
+
+            # Simpan Sukses ke Response
             results.append({
+                "submission_id": submission_doc_id,
                 "student_id": student_id,
                 "status": "success",
                 "result": result_json
@@ -134,7 +170,6 @@ def process_batch_grading(submissions: list, grading_type: str = "essay"):
     }
 
 def _download_image(url):
-    """Helper untuk download gambar dari URL"""
     try:
         if not url: return None
         headers = {'User-Agent': 'Mozilla/5.0'}
@@ -145,8 +180,6 @@ def _download_image(url):
         print(f"Download Error: {e}")
     return None
 
-
 def parse_input(text):
     if not text: return []
-    # Hapus spasi, uppercase, split koma
     return [x.strip().upper() for x in str(text).split(',')]
