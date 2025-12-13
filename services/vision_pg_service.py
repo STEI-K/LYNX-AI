@@ -63,6 +63,8 @@ def get_rubric_vision(image_bytes: bytes):
         
         # 4. Scan Bubbles pada area bersih
         detected_answers = process_bubbles_grid(roi_bubbles)
+        detected_answers = ",".join(detected_answers)
+        # Gabungkan menjadi string
         return json.dumps({
             "answers": detected_answers
         })
