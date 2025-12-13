@@ -1,3 +1,4 @@
+# services/chat_services.py
 import os
 import requests
 import uuid
@@ -62,16 +63,15 @@ def chat_service(
     flashcard_triggers = ["buatkan flashcard", "bikin flashcard", "generate flashcard", "kartu belajar"]
     if any(k in lower_q for k in flashcard_triggers):
         print("[DEBUG] -> Masuk Jalur Flashcard Generation")
-        # Panggil handler flashcard
         response_data = _handle_flashcard_generation(question)
         
-        # [UPDATE] Simpan Flashcard ke Firebase jika session ada
+        # Simpan Flashcard ke Firebase
         if session_id and response_data.get("type") != "error":
              _save_chat_pair_to_firebase(
                  session_id, user_id, question, 
-                 answer="[Flashcard Generated]", # Fallback text
+                 answer="Flashcard Generated", # Judul akan ambil dari sini jika ini prompt pertama
                  response_type="flashcard",
-                 response_data=response_data.get("data") # Simpan JSON datanya
+                 response_data=response_data.get("data")
              )
         return response_data
 
@@ -89,7 +89,7 @@ def chat_service(
     
     response_data = _handle_text_chat(question, final_history, subject, file_url, file_base64, mime_type)
     
-    # [UPDATE] Simpan Text Chat ke Firebase
+    # Simpan Text Chat ke Firebase
     if session_id and response_data.get("type") == "text":
         _save_chat_pair_to_firebase(
             session_id, user_id, question, 
@@ -192,7 +192,6 @@ def _fetch_history_from_firebase(session_id: str) -> List[Dict]:
     if not db: return []
     try:
         messages_ref = db.collection('chat_rooms').document(session_id).collection('messages')
-        # Filter hanya pesan text agar tidak membingungkan Gemini dengan JSON flashcard
         docs = messages_ref.where('type', '==', 'text').order_by('timestamp', direction=firestore.Query.ASCENDING).limit_to_last(20).stream()
         
         history = []
@@ -204,34 +203,64 @@ def _fetch_history_from_firebase(session_id: str) -> List[Dict]:
         print(f"[ERROR] Fetch history: {e}")
         return []
 
+def _generate_smart_title_from_answer(answer_text: str) -> str:
+    """
+    Mengambil intisari kalimat pertama dari jawaban AI sebagai judul.
+    """
+    try:
+        # 1. Bersihkan Markdown
+        clean = answer_text.replace('*', '').replace('#', '').replace('`', '').strip()
+        # 2. Ambil kalimat pertama saja
+        first_line = clean.split('\n')[0]
+        # 3. Potong di tanda baca kalimat
+        first_sentence = first_line.split('.')[0].strip()
+        
+        if len(first_sentence) < 3:
+            return "Percakapan Baru"
+            
+        # 4. Batasi panjang maksimal 50 karakter agar muat di sidebar
+        if len(first_sentence) > 50:
+            return first_sentence[:47] + "..."
+            
+        # 5. Kapitalisasi huruf pertama
+        return first_sentence[0].upper() + first_sentence[1:]
+    except:
+        return "Percakapan Baru"
+
 def _save_chat_pair_to_firebase(session_id: str, user_id: str, question: str, answer: str, response_type: str = "text", response_data: Any = None):
     """
     Menyimpan chat text maupun flashcard ke database.
+    Judul akan di-generate dari ANSWER (Jawaban AI), bukan Question.
     """
     db = _get_firestore_db()
     if not db: return
     
     try:
         doc_ref = db.collection('chat_rooms').document(session_id)
-        
-        # 1. Cek & Create Room
         doc_snap = doc_ref.get()
         batch = db.batch()
         
-        if not doc_snap.exists:
-            auto_title = (question[:50] + '...') if len(question) > 50 else question
+        # LOGIKA JUDUL:
+        # Jika Dokumen belum ada, ATAU Judul masih placeholder ("Menulis judul...")
+        # Maka update judul menggunakan konten dari ANSWER AI.
+        current_data = doc_snap.to_dict() if doc_snap.exists else {}
+        current_title = current_data.get("title")
+        
+        if not doc_snap.exists or current_title in ["Menulis judul...", "Percakapan Baru", None]:
+            smart_title = _generate_smart_title_from_answer(answer)
             batch.set(doc_ref, {
                 "created_at": firestore.SERVER_TIMESTAMP,
                 "last_updated": firestore.SERVER_TIMESTAMP,
-                "title": auto_title,
+                "title": smart_title,
                 "user_id": user_id if user_id else "anonymous"
-            })
+            }, merge=True)
         else:
+            # Jika sudah ada judul valid, hanya update last_updated
             batch.set(doc_ref, {"last_updated": firestore.SERVER_TIMESTAMP}, merge=True)
 
         messages_ref = doc_ref.collection('messages')
         
-        # 2. Simpan User Message
+        # Simpan User Message
         user_msg_ref = messages_ref.document()
         batch.set(user_msg_ref, {
             "role": "user",
@@ -240,23 +269,22 @@ def _save_chat_pair_to_firebase(session_id: str, user_id: str, question: str, an
             "timestamp": firestore.SERVER_TIMESTAMP
         })
         
-        # 3. Simpan AI Message (Bisa Text atau Flashcard)
+        # Simpan AI Message
         model_msg_ref = messages_ref.document()
         msg_data = {
             "role": "model",
-            "type": response_type, # 'text' atau 'flashcard'
-            "content": answer,     # Teks fallback untuk ditampilkan sekilas
+            "type": response_type,
+            "content": answer,
             "timestamp": firestore.SERVER_TIMESTAMP
         }
         
-        # Jika ada data tambahan (misal JSON flashcard), simpan juga
         if response_data:
             msg_data["data"] = response_data
             
         batch.set(model_msg_ref, msg_data)
         
         batch.commit()
-        print(f"[INFO] Saved {response_type} to session {session_id}")
+        print(f"[INFO] Saved {response_type} to session {session_id} with title update logic.")
         
     except Exception as e:
         print(f"[ERROR] Save chat failed: {e}")
