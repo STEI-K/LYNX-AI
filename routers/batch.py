@@ -1,7 +1,8 @@
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from typing import List, Optional, Any
-from services.batch_grade_service import process_batch_grading
+from services.batch_grade_service import _download_image, process_batch_grading
+from services.vision_pg_service import get_rubric_vision
 
 router = APIRouter()
 
@@ -29,6 +30,10 @@ class BatchRequest(BaseModel):
     type: str = "essay" 
     submissions: List[SubmissionItem]
 
+class rubricRequest(BaseModel):
+    assignment_id: str
+    image_url: str
+
 @router.post("/")
 def batch_grade(req: BatchRequest):
     """
@@ -46,3 +51,15 @@ def batch_grade(req: BatchRequest):
         "assignment_id": req.assignment_id,
         "batch_result": result
     }
+
+@router.post("/getrubricpg")
+def get_rubric(req: rubricRequest):
+    """
+    Endpoint untuk mengubah image URL menjadi list string dengan get_rubric_vision.
+    """
+    img_bytes = _download_image(req.image_url)
+    
+    if img_bytes:
+        return get_rubric_vision(img_bytes)
+    else:
+        return '{"error": "Gagal download gambar"}'

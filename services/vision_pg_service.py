@@ -38,6 +38,39 @@ def grade_pg_vision(image_bytes: bytes, key_list: list = None):
             "error": f"Gagal Memproses LJK: {str(e)}",
             "hint": "Pastikan foto menampilkan seluruh lembar jawaban dengan pencahayaan cukup."
         })
+    
+def get_rubric_vision(image_bytes: bytes):
+    """
+    Ekstrak rubrik soal dari gambar (misal: LJK yang berisi rubrik).
+    """
+    # 1. Decode Image
+    nparr = np.frombuffer(image_bytes, np.uint8)
+    image = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+
+    if image is None:
+        return json.dumps({"error": "Gagal decode gambar."})
+
+    try:
+        # 2. Resize Lebar ke 1600px (Standar Presisi)
+        # Kita butuh resolusi fix agar filter ukuran bubble (pixel) valid.
+        target_w = 1600
+        h, w = image.shape[:2]
+        scale = target_w / w
+        resized = cv2.resize(image, (target_w, int(h * scale)))
+        
+        # 3. HEADER REMOVAL (Potong Area Atas)
+        roi_bubbles = crop_header_aggressive(resized)
+        
+        # 4. Scan Bubbles pada area bersih
+        detected_answers = process_bubbles_grid(roi_bubbles)
+        return json.dumps({
+            "answers": detected_answers
+        })
+    except Exception as e:
+        return json.dumps({
+            "error": f"Gagal Memproses LJK: {str(e)}",
+            "hint": "Pastikan foto menampilkan seluruh lembar jawaban dengan pencahayaan cukup."
+        })
 
 def crop_header_aggressive(image):
     """
