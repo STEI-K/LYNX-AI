@@ -94,7 +94,9 @@ def chat_service(
         _save_chat_pair_to_firebase(
             session_id, user_id, question, 
             answer=response_data["answer"],
-            response_type="text"
+            response_type="text",
+            file_url=file_url,   # [FIX] Kirim file_url ke fungsi save
+            mime_type=mime_type  # [FIX] Kirim mime_type ke fungsi save
         )
 
     return response_data
@@ -126,6 +128,7 @@ def _handle_text_chat(question, history, subject, file_url, file_base64, mime_ty
             temp_file_path = _save_base64_file(file_base64, mime_type)
 
         if temp_file_path:
+            # Pastikan mime_type dikirim ke Gemini agar dia tahu ini PDF atau Gambar
             gemini_file = upload_file_to_gemini(temp_file_path, mime_type)
             prompt_content.insert(0, gemini_file)
             context_parts.append("[USER MELAMPIRKAN FILE]")
@@ -227,10 +230,10 @@ def _generate_smart_title_from_answer(answer_text: str) -> str:
     except:
         return "Percakapan Baru"
 
-def _save_chat_pair_to_firebase(session_id: str, user_id: str, question: str, answer: str, response_type: str = "text", response_data: Any = None):
+def _save_chat_pair_to_firebase(session_id: str, user_id: str, question: str, answer: str, response_type: str = "text", response_data: Any = None, file_url: str = None, mime_type: str = None):
     """
     Menyimpan chat text maupun flashcard ke database.
-    Judul akan di-generate dari ANSWER (Jawaban AI), bukan Question.
+    [CRITICAL FIX] Sekarang menyimpan image_url/file_url ke dokumen User agar preview tidak hilang.
     """
     db = _get_firestore_db()
     if not db: return
@@ -240,9 +243,7 @@ def _save_chat_pair_to_firebase(session_id: str, user_id: str, question: str, an
         doc_snap = doc_ref.get()
         batch = db.batch()
         
-        # LOGIKA JUDUL:
-        # Jika Dokumen belum ada, ATAU Judul masih placeholder ("Menulis judul...")
-        # Maka update judul menggunakan konten dari ANSWER AI.
+        # LOGIKA JUDUL
         current_data = doc_snap.to_dict() if doc_snap.exists else {}
         current_title = current_data.get("title")
         
@@ -255,21 +256,29 @@ def _save_chat_pair_to_firebase(session_id: str, user_id: str, question: str, an
                 "user_id": user_id if user_id else "anonymous"
             }, merge=True)
         else:
-            # Jika sudah ada judul valid, hanya update last_updated
             batch.set(doc_ref, {"last_updated": firestore.SERVER_TIMESTAMP}, merge=True)
 
         messages_ref = doc_ref.collection('messages')
         
-        # Simpan User Message
+        # --- Simpan User Message (DENGAN FILE DATA) ---
         user_msg_ref = messages_ref.document()
-        batch.set(user_msg_ref, {
+        
+        user_payload = {
             "role": "user",
             "type": "text",
             "content": question,
             "timestamp": firestore.SERVER_TIMESTAMP
-        })
+        }
         
-        # Simpan AI Message
+        # [FIX] Simpan URL dan Mime Type agar frontend bisa merender ulang
+        if file_url:
+            user_payload["imageUrl"] = file_url
+        if mime_type:
+            user_payload["mimeType"] = mime_type
+
+        batch.set(user_msg_ref, user_payload)
+        
+        # --- Simpan AI Message ---
         model_msg_ref = messages_ref.document()
         msg_data = {
             "role": "model",
@@ -284,7 +293,7 @@ def _save_chat_pair_to_firebase(session_id: str, user_id: str, question: str, an
         batch.set(model_msg_ref, msg_data)
         
         batch.commit()
-        print(f"[INFO] Saved {response_type} to session {session_id} with title update logic.")
+        print(f"[INFO] Saved {response_type} to session {session_id} with file persistence.")
         
     except Exception as e:
         print(f"[ERROR] Save chat failed: {e}")
