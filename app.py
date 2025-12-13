@@ -45,4 +45,4 @@ app.include_router(analysis.router, prefix="/analysis", tags=["Analytics"])
 
 @app.get("/")
 def root():
-    return {"message": "LYNX AI is running 🚀"}
+    return {"message": "LYNX AI is running "}
