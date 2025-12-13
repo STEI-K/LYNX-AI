@@ -52,7 +52,7 @@ def batch_grade(req: BatchRequest):
         "batch_result": result
     }
 
-@router.post("/getrubricpg")
+@router.post("/getrubric")
 def get_rubric(req: rubricRequest):
     """
     Endpoint untuk mengubah image URL menjadi list string dengan get_rubric_vision.
@@ -60,6 +60,9 @@ def get_rubric(req: rubricRequest):
     img_bytes = _download_image(req.image_url)
     
     if img_bytes:
-        return get_rubric_vision(img_bytes)
+        if(req.assignment_id == "pg_rubric"):
+            return get_rubric_vision(img_bytes)
+        else:
+            return '{"error": "Tipe rubrik tidak valid"}'
     else:
         return '{"error": "Gagal download gambar"}'
