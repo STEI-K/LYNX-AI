@@ -1,8 +1,9 @@
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from typing import List, Optional, Any
-from services.batch_grade_service import _download_image, process_batch_grading
+from services.batch_grade_service import _download_image, process_batch_grading, _download_pdf
 from services.vision_pg_service import get_rubric_vision
+from services.vision_essay_service import extract_text_from_image, extract_text_from_pdf    
 
 router = APIRouter()
 
@@ -32,13 +33,15 @@ class BatchRequest(BaseModel):
 
 class rubricRequest(BaseModel):
     assignment_id: str
-    image_url: str
+    image_url: Optional[str] = None
+    pdf_url: Optional[str] = None
 
 @router.post("/")
 def batch_grade(req: BatchRequest):
     """
     Endpoint Penilaian Massal (Text & Vision).
     """
+    
     if not req.submissions:
         raise HTTPException(status_code=400, detail="Data submission kosong.")
     
@@ -57,12 +60,52 @@ def get_rubric(req: rubricRequest):
     """
     Endpoint untuk mengubah image URL menjadi list string dengan get_rubric_vision.
     """
-    img_bytes = _download_image(req.image_url)
+    """
+    CONTOH REQUEST:
+    {
+        "assignment_id": "pg_rubric",
+        "image_url": "https://example.com/image.jpg"
+    }
+    """
     
-    if img_bytes:
-        if(req.assignment_id == "pg_rubric"):
-            return get_rubric_vision(img_bytes)
+    if req.assignment_id.strip() == "" or req.image_url.strip() == "":
+        raise HTTPException(status_code=400, detail="assignment_id dan image_url harus diisi.")
+    if req.assignment_id == "pg_rubric":
+        try:
+            image_bytes = _download_image(req.image_url)
+        except Exception as e:
+            raise HTTPException(status_code=400, detail=f"Gagal mengunduh gambar: {str(e)}")
+        
+        rubric_list = get_rubric_vision(image_bytes)
+        
+        return {
+            "assignment_id": req.assignment_id,
+            "rubric": rubric_list
+        }
+    elif req.assignment_id == "essay_rubric":
+        if req.pdf_url:
+            try:
+                pdf_bytes = _download_pdf(req.pdf_url)
+            except Exception as e:
+                raise HTTPException(status_code=400, detail=f"Gagal mengunduh PDF: {str(e)}")
+            
+            extracted_text = extract_text_from_pdf(pdf_bytes)
+            return {
+                "assignment_id": req.assignment_id,
+                "extracted_text": extracted_text
+            }
+        elif req.image_url:
+            try:
+                image_bytes = _download_image(req.image_url)
+            except Exception as e:
+                raise HTTPException(status_code=400, detail=f"Gagal mengunduh gambar: {str(e)}")
+            
+            extracted_text = extract_text_from_image(image_bytes)
+            return {
+                "assignment_id": req.assignment_id,
+                "extracted_text": extracted_text
+            }
         else:
-            return '{"error": "Tipe rubrik tidak valid"}'
+            raise HTTPException(status_code=400, detail="Untuk essay_rubric, harus menyediakan image_url atau pdf_url.")
     else:
-        return '{"error": "Gagal download gambar"}'
+        raise HTTPException(status_code=400, detail="assignment_id tidak valid.")

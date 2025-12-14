@@ -33,3 +33,33 @@ def grade_essay_vision(image_bytes, question, rubric, max_score):
         return response.text.replace("```json", "").replace("```", "").strip()
     except Exception as e:
         return f'{{"error": "{str(e)}"}}'
+    
+def extract_text_from_image(image_bytes):
+    prompt = "Ekstrak teks dari gambar berikut dan kembalikan hanya teksnya tanpa format tambahan."
+    
+    model = get_vision_model()
+    
+    try:
+        response = model.generate_content([
+            prompt,
+            {"mime_type": "image/jpeg", "data": image_bytes}
+        ])
+        
+        return response.text.strip()
+    except Exception as e:
+        return f'Error: {str(e)}'
+    
+def extract_text_from_pdf(pdf_bytes):
+    prompt = "Ekstrak teks dari PDF berikut dan kembalikan hanya teksnya tanpa format tambahan."
+    
+    model = get_vision_model()
+    
+    try:
+        response = model.generate_content([
+            prompt,
+            {"mime_type": "application/pdf", "data": pdf_bytes}
+        ])
+        
+        return response.text.strip()
+    except Exception as e:
+        return f'Error: {str(e)}'

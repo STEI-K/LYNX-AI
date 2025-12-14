@@ -180,6 +180,17 @@ def _download_image(url):
         print(f"Download Error: {e}")
     return None
 
+def _download_pdf(url):
+    try:
+        if not url: return None
+        headers = {'User-Agent': 'Mozilla/5.0'}
+        resp = requests.get(url, headers=headers, timeout=10)
+        if resp.status_code == 200:
+            return resp.content
+    except Exception as e:
+        print(f"Download Error: {e}")
+    return None
+
 def parse_input(text):
     if not text: return []
     return [x.strip().upper() for x in str(text).split(',')]
