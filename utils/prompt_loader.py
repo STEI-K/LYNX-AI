@@ -101,6 +101,7 @@ Kembalikan JSON valid dengan struktur:
       "rubric": "rubrik penilaian detail untuk dosen",
       "score": 15
     }}
+
   ]
 }}
 

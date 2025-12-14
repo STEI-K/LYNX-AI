@@ -52,6 +52,7 @@ def _get_direct_url(url: str) -> str:
 def generate_soal(req: GenerateSoalRequest):
     """
     Generate soal lengkap dengan kunci jawaban, rubrik, dan poin penilaian.
+    
     """
     result = generate_soal_service(
         req.subject,
