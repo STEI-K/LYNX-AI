@@ -17,11 +17,22 @@ os.makedirs(TEMP_DIR, exist_ok=True)
 
 # --- REQUEST MODELS ---
 class GenerateSoalRequest(BaseModel):
+    """
+    Model request untuk generate soal.
+    Contoh JSON:
+    {
+      "subject": "Matematika",
+      "topic": "Aljabar",
+      "difficulty": "sedang",
+      "total_questions": 10,
+      "types": ["pg", "essay"],
+    }    
+    """
     subject: str
     topic: str
     difficulty: str
     total_questions: int
-    types: List[Literal["pg", "essay"]]
+    types: str
     language: str = "id"
 
 # --- HELPER FUNCTIONS ---
