@@ -17,8 +17,7 @@ class SubmissionItem(BaseModel):
     file_url: Optional[str] = None
     
     # Konteks Soal (Opsional per siswa)
-    question: Optional[str] = None
-    rubric: Optional[str] = None
+
     
     # Khusus LJK (Vision PG)
     key_list: Optional[List[int]] = None 
@@ -28,7 +27,10 @@ class SubmissionItem(BaseModel):
 class BatchRequest(BaseModel):
     assignment_id: str
     # Opsi tipe: 'essay', 'pg', 'vision_essay', 'vision_pg'
-    type: str = "essay" 
+    type: str 
+    question_image_url: Optional[str] = None
+    question_pdf_url: Optional[str] = None
+    rubric: Optional[str] = None
     submissions: List[SubmissionItem]
 
 class rubricRequest(BaseModel):
@@ -48,7 +50,7 @@ def batch_grade(req: BatchRequest):
     # Ubah ke dict agar mudah diolah service
     submissions_data = [s.dict() for s in req.submissions]
     
-    result = process_batch_grading(submissions_data, req.type)
+    result = process_batch_grading(submissions_data, req.type, req.question_image_url or req.question_pdf_url, req.rubric)
     
     return {
         "assignment_id": req.assignment_id,

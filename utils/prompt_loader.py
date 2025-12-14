@@ -244,7 +244,7 @@ OUTPUT STRICT JSON:
 }
 """
 
-def build_student_performance_prompt(student_name: str, grade_level: str, scores: list) -> str:
+def give_link_recommend(student_name: str, grade_level: str, scores: list) -> str:
     """
     Prompt untuk menganalisis performa siswa berdasarkan nilai mata pelajaran.
     """
@@ -262,20 +262,18 @@ Daftar Nilai:
 Tugasmu:
 1. Identifikasi Kekuatan (Mata pelajaran dengan nilai tinggi).
 2. Identifikasi Kelemahan (Nilai di bawah target/rendah).
-3. Berikan saran spesifik untuk meningkatkan nilai yang kurang.
-4. Berikan rekomendasi jurusan kuliah atau karir yang cocok berdasarkan kekuatan nilainya.
+3. Beri Rekomendasi Spesifik untuk tiap mata pelajaran:
+4. Sertakan link pendukung untuk belajar siswa
 
 OUTPUT STRICT JSON:
 {{
-  "summary": "Ringkasan performa dalam 1-2 kalimat",
-  "strengths": ["Mata pelajaran A karena...", "Mata pelajaran B..."],
   "weaknesses": ["Mata pelajaran C karena...", ...],
   "recommendations": [
     {{
       "subject": "Nama Mapel",
-      "advice": "Saran cara belajar spesifik"
+      "advice": "Saran cara belajar spesifik",
+      "resource_link": "https://..."
     }}
   ],
-  "career_suggestions": ["Jurusan/Karir 1", "Jurusan/Karir 2"]
 }}
 """

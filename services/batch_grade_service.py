@@ -4,8 +4,8 @@ import requests
 import firebase_admin
 from firebase_admin import firestore
 from services.essay_service import grade_essay_service
-from services.vision_essay_service import grade_essay_vision
-from services.vision_pg_service import grade_pg_vision
+from services.vision_essay_service import grade_essay_vision, extract_text_from_image, extract_text_from_pdf
+from services.vision_pg_service import grade_pg_vision, feedback_pg_vision
 
 # --- INIT FIREBASE ---
 if not firebase_admin._apps:
@@ -20,7 +20,7 @@ def _get_db():
     except:
         return None
 
-def process_batch_grading(submissions: list, grading_type: str = "essay"):
+def process_batch_grading(submissions: list, grading_type: str = "essay", soal_url: str = None, rubric: str = None):
     """
     Memproses penilaian massal DAN menyimpan hasilnya ke database 'submissions'.
     """
@@ -41,8 +41,13 @@ def process_batch_grading(submissions: list, grading_type: str = "essay"):
         try:
             # --- TIPE 1: ESSAY TEKS ---
             if grading_type == "essay":
-                question = sub.get("question")
+                # if soal_url is a PDF use PDF extractor else use image extractor
+                if soal_url and 'pdf' in str(soal_url).lower():
+                    question = extract_text_from_pdf(_download_pdf(soal_url))
+                else:
+                    question = extract_text_from_image(_download_image(soal_url))
                 rubric = sub.get("rubric")
+
                 answer = sub.get("answer")
                 max_score = sub.get("max_score", 100)
                 
@@ -59,6 +64,10 @@ def process_batch_grading(submissions: list, grading_type: str = "essay"):
 
             # --- TIPE 2: PG TEKS ---
             elif grading_type == "pg":
+                if soal_url and 'pdf' in str(soal_url).lower():
+                    question = extract_text_from_pdf(_download_pdf(soal_url))
+                else:
+                    question = extract_text_from_image(_download_image(soal_url))
                 keys = parse_input(sub.get("rubric"))
                 answers = parse_input(sub.get("answer"))
                 max_score = sub.get("max_score", 100)
@@ -84,6 +93,7 @@ def process_batch_grading(submissions: list, grading_type: str = "essay"):
                         feedback = "Sempurna!"
                     else:
                         feedback = f"Salah {len(wrong_details)} soal."
+                    feedback = feedback + "\n" + feedback_pg_vision(soal=question, jawaban_siswa=answers, key_list=keys)
                 
                 result_json = json.dumps({
                     "score": score, 
@@ -94,7 +104,13 @@ def process_batch_grading(submissions: list, grading_type: str = "essay"):
             # --- TIPE 3: VISION ESSAY ---
             elif grading_type == "vision_essay":
                 image_url = sub.get("file_url")
-                question = sub.get("question")
+                if soal_url and 'pdf' in str(soal_url).lower():
+                    question = extract_text_from_pdf(_download_pdf(soal_url))
+                else:
+                    question = extract_text_from_image(_download_image(soal_url))
+                keys = parse_input(sub.get("rubric"))
+                answers = parse_input(sub.get("answer"))
+                max_score = sub.get("max_score", 100)
                 rubric = sub.get("rubric")
                 max_score = sub.get("max_score", 100)
                 
@@ -113,11 +129,18 @@ def process_batch_grading(submissions: list, grading_type: str = "essay"):
             # --- TIPE 4: VISION PG / LJK ---
             elif grading_type == "vision_pg":
                 image_url = sub.get("file_url")
+                if soal_url and 'pdf' in str(soal_url).lower():
+                    question = extract_text_from_pdf(_download_pdf(soal_url))
+                else:
+                    question = extract_text_from_image(_download_image(soal_url))
+                keys = parse_input(sub.get("rubric"))
+                answers = parse_input(sub.get("answer"))
+                max_score = sub.get("max_score", 100)
                 key_list = sub.get("key_list", []) # List kunci jawaban
                 img_bytes = _download_image(image_url)
                 
                 if img_bytes:
-                    result_raw = grade_pg_vision(img_bytes, key_list)
+                    result_raw = grade_pg_vision(img_bytes, key_list, soal=question)
                     try:
                         parsed = json.loads(result_raw)
                         score = parsed.get("score", 0)

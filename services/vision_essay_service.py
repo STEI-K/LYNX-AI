@@ -3,7 +3,7 @@ from services.gemini_client import get_vision_model
 def grade_essay_vision(image_bytes, question, rubric, max_score):
     prompt = f"""
     Kamu adalah AI OCR + Essay Grader.
-
+    feedback harus konstruktif dan spesifik serta deskripsi yang rapih.
     Langkah:
     1. Ekstrak teks dari gambar.
     2. Nilai jawaban siswa berdasarkan rubrik.

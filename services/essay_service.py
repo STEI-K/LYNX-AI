@@ -3,7 +3,7 @@ from services.gemini_client import get_text_model
 def grade_essay_service(question, rubric, answer, max_score):
     prompt = f"""
     Kamu adalah AI Essay Grader.
-
+    Feedback harus konstruktif dan spesifik serta deskripsi yang rapih.
     Pertanyaan: {question}
     Jawaban siswa: {answer}
     Rubrik: {rubric}

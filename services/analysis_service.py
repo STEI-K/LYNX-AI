@@ -2,7 +2,7 @@ import json
 import firebase_admin
 from firebase_admin import firestore
 from services.gemini_client import get_text_model
-from utils.prompt_loader import build_student_performance_prompt
+from utils.prompt_loader import give_link_recommend
 
 # Helper untuk koneksi DB (Singleton-like)
 def _get_db():
@@ -60,7 +60,7 @@ def analysis_performace_service(student_id: str, student_name: str, grade_level:
 
     # 3. Kirim Data Agregat ke AI
     print(f"[DEBUG] Analyzing Performance for {student_name}: {final_scores}")
-    prompt = build_student_performance_prompt(student_name, grade_level, final_scores)
+    prompt = give_link_recommend(student_name, grade_level, final_scores)
     model = get_text_model()
     
     try:

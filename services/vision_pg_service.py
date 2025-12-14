@@ -3,7 +3,7 @@ import numpy as np
 import json
 from services.gemini_client import get_vision_model
 
-def grade_pg_vision(image_bytes: bytes, key_list: list = None):
+def grade_pg_vision(image_bytes: bytes, key_list: list = None, soal: str = None):
     """
     Grading LJK dengan pendekatan 'Aggressive Header Cropping'.
     Sistem akan mencari blok konten besar di bagian atas (Header/Nama)
@@ -30,8 +30,9 @@ def grade_pg_vision(image_bytes: bytes, key_list: list = None):
         # 4. Scan Bubbles pada area bersih
         detected_answers = process_bubbles_grid(roi_bubbles)
         
+        feedback = feedback_pg_vision(soal=soal, jawaban_siswa=detected_answers, key_list=key_list) 
         # 5. Grading
-        score_data = calculate_score(detected_answers, key_list)
+        score_data = calculate_score(detected_answers, key_list, feedback)
         return json.dumps(score_data)
 
     except Exception as e:
@@ -238,7 +239,7 @@ def process_bubbles_grid(image):
 
     return final_answers
 
-def calculate_score(student_answers, key_list):
+def calculate_score(student_answers, key_list ,feedback_ai=""):
     if not key_list:
         return {"answers": student_answers, "info": "Scan Only Mode"}
     
@@ -288,5 +289,32 @@ def calculate_score(student_answers, key_list):
         "total_questions": len(key_list),
         "answers": student_answers,
         "details": details,
-        "feedback": feedback
+        "feedback": feedback + "\n" + feedback_ai
     }
+
+
+def feedback_pg_vision(soal: str, jawaban_siswa: list, key_list: list):
+    """
+    Memberikan feedback grading LJK dari jawaban siswa terhadap soal.
+    """
+    prompt = f"""
+    Kamu adalah AI LJK Grader.
+    Berikan feedback lengkap berdasarkan jawaban siswa dan kunci jawaban materi mana yang siswa kurang.
+    
+    Soal: {soal}
+    Jawaban Siswa: {','.join(jawaban_siswa)}
+    Kunci Jawaban: {','.join([str(k) for k in key_list])}
+    
+    Output JSON STRICT:
+    "feedback": "..."
+
+    """
+
+    model = get_vision_model()
+    
+    try:
+        response = model.generate_content(prompt)
+        clean_text = response.text.strip()
+        return clean_text
+    except Exception as e:
+        return f'{{"error": "{str(e)}"}}'
