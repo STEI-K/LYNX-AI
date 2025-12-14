@@ -13,12 +13,10 @@ class SmartAnalysisRequest(BaseModel):
     {
         "student_id": "stu123",
         "student_name": "Budi",
-        "grade_level": "12 SMA"
     }
     """
     student_id: str   # Kunci utama untuk cari data di DB
     student_name: str # Untuk konteks sapaan di Prompt AI
-    grade_level: str  # e.g., "12 SMA"
 
 @router.post("/")
 def analyze_report_card(req: SmartAnalysisRequest):
@@ -29,7 +27,6 @@ def analyze_report_card(req: SmartAnalysisRequest):
     result = analysis_performace_service(
         req.student_id,
         req.student_name,
-        req.grade_level
     )
     
     if "error" in result:

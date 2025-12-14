@@ -11,7 +11,7 @@ def _get_db():
     except:
         return None
 
-def analysis_performace_service(student_id: str, student_name: str, grade_level: str):
+def analysis_performace_service(student_id: str, student_name: str):
     """
     LOGIC BARU: Otomatis tarik nilai dari Firebase 'submissions' milik siswa.
     """
@@ -23,7 +23,7 @@ def analysis_performace_service(student_id: str, student_name: str, grade_level:
     try:
         # Ambil semua submission milik siswa yang sudah dinilai ('graded')
         docs = db.collection('submissions')\
-                 .where('student_id', '==', student_id)\
+                 .where('studentId', '==', student_id)\
                  .where('status', '==', 'graded')\
                  .stream()
 
@@ -60,7 +60,7 @@ def analysis_performace_service(student_id: str, student_name: str, grade_level:
 
     # 3. Kirim Data Agregat ke AI
     print(f"[DEBUG] Analyzing Performance for {student_name}: {final_scores}")
-    prompt = give_link_recommend(student_name, grade_level, final_scores)
+    prompt = give_link_recommend(student_name, final_scores)
     model = get_text_model()
     
     try:

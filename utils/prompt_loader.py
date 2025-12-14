@@ -245,7 +245,7 @@ OUTPUT STRICT JSON:
 }
 """
 
-def give_link_recommend(student_name: str, grade_level: str, scores: list) -> str:
+def give_link_recommend(student_name: str, scores: list) -> str:
     """
     Prompt untuk menganalisis performa siswa berdasarkan nilai mata pelajaran.
     """
@@ -256,7 +256,6 @@ Kamu adalah Konselor Akademik AI yang bijak dan memotivasi.
 Analisis data nilai siswa berikut dan berikan feedback komprehensif.
 
 Nama Siswa: {student_name}
-Kelas: {grade_level}
 Daftar Nilai:
 {scores_str}
 
