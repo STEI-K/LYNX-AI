@@ -25,6 +25,25 @@ class SubmissionItem(BaseModel):
     max_score: int = 100
 
 class BatchRequest(BaseModel):
+    """
+    send to lynx-ai.up.railway.app/grade/
+    CONTOH REQUEST:
+    {
+        "assignment_id": "tugas1_kelas12",
+        "type": "essay"(atau "pg" / "vision_essay" / "vision_pg"),
+        "question_image_url": "https://example.com/question.jpg"(opsional),(atau "question_pdf_url": "https://example.com/question.pdf"),
+        "rubric": "Rubrik penilaian...",
+        "submissions": [
+            {
+                "student_id": "stu123", 
+                "answer": "Jawaban siswa...",
+                "file_url": "https://example.com/file.jpg"(jawaban),
+                "key_list": [1, 2, 3],
+            }
+        ]
+    }
+    """
+    
     assignment_id: str
     # Opsi tipe: 'essay', 'pg', 'vision_essay', 'vision_pg'
     type: str 
@@ -32,8 +51,16 @@ class BatchRequest(BaseModel):
     question_pdf_url: Optional[str] = None
     rubric: Optional[str] = None
     submissions: List[SubmissionItem]
-
 class rubricRequest(BaseModel):
+    """
+    send to lynx-ai.up.railway.app/grade/getrubric
+    CONTOH REQUEST:
+    {
+        "assignment_id": "pg_rubric/essay_rubric",
+        "image_url": "https://example.com/image.jpg"(atau)
+        "pdf_url": "https://example.com/file.pdf"
+    }
+    """
     assignment_id: str
     image_url: Optional[str] = None
     pdf_url: Optional[str] = None
@@ -106,7 +133,7 @@ def get_rubric(req: rubricRequest):
             extracted_text = extract_text_from_pdf(pdf_bytes)
             return {
                 "assignment_id": req.assignment_id,
-                "extracted_text": extracted_text
+                "rubric": extracted_text
             }
         elif req.image_url:
             try:
@@ -117,7 +144,7 @@ def get_rubric(req: rubricRequest):
             extracted_text = extract_text_from_image(image_bytes)
             return {
                 "assignment_id": req.assignment_id,
-                "extracted_text": extracted_text
+                "rubric": extracted_text
             }
         else:
             raise HTTPException(status_code=400, detail="Untuk essay_rubric, harus menyediakan image_url atau pdf_url.")

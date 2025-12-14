@@ -7,6 +7,15 @@ router = APIRouter()
 
 # REQUEST BODY BARU (Lebih Simpel)
 class SmartAnalysisRequest(BaseModel):
+    """
+    post ke link lynx-ai.up.railway.app/analysis/
+    Contoh Request Body:
+    {
+        "student_id": "stu123",
+        "student_name": "Budi",
+        "grade_level": "12 SMA"
+    }
+    """
     student_id: str   # Kunci utama untuk cari data di DB
     student_name: str # Untuk konteks sapaan di Prompt AI
     grade_level: str  # e.g., "12 SMA"
@@ -30,4 +39,8 @@ def analyze_report_card(req: SmartAnalysisRequest):
         # Error lain (koneksi/AI) return 500
         raise HTTPException(status_code=500, detail=result["error"])
         
+    """
+    Return Format:
+    
+    """
     return {"analysis": result}
