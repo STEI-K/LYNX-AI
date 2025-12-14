@@ -1,7 +1,7 @@
 import cv2
 import numpy as np
 import json
-from services.vision_service import get_vision_model
+from services.gemini_client import get_vision_model
 
 def grade_pg_vision(image_bytes: bytes, key_list: list = None):
     """
