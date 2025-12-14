@@ -1,6 +1,7 @@
 import cv2
 import numpy as np
 import json
+from services.vision_service import get_vision_model
 
 def grade_pg_vision(image_bytes: bytes, key_list: list = None):
     """
@@ -73,6 +74,22 @@ def get_rubric_vision(image_bytes: bytes):
             "error": f"Gagal Memproses LJK: {str(e)}",
             "hint": "Pastikan foto menampilkan seluruh lembar jawaban dengan pencahayaan cukup."
         })
+    
+def extract_rubric_vision(pdf_bytes: bytes):
+    # Ekstrak halaman pertama dari PDF sebagai gambar
+    prompt = "Ekstrak teks dari PDF berikut dan kembalikan hanya teksnya tanpa format tambahan, rapihkan format jawaban \"A,B,C,D\"(contoh jika 4 nomor sesuai urutan nomor ."
+    
+    model = get_vision_model()
+    
+    try:
+        response = model.generate_content([
+            prompt,
+            {"mime_type": "application/pdf", "data": pdf_bytes}
+        ])
+        
+        return response.text.strip()
+    except Exception as e:
+        return f'Error: {str(e)}'
 
 def crop_header_aggressive(image):
     """

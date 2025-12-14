@@ -2,7 +2,7 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from typing import List, Optional, Any
 from services.batch_grade_service import _download_image, process_batch_grading, _download_pdf
-from services.vision_pg_service import get_rubric_vision
+from services.vision_pg_service import get_rubric_vision, extract_rubric_vision
 from services.vision_essay_service import extract_text_from_image, extract_text_from_pdf    
 
 router = APIRouter()
@@ -71,17 +71,29 @@ def get_rubric(req: rubricRequest):
     if req.assignment_id.strip() == "" or req.image_url.strip() == "":
         raise HTTPException(status_code=400, detail="assignment_id dan image_url harus diisi.")
     if req.assignment_id == "pg_rubric":
-        try:
-            image_bytes = _download_image(req.image_url)
-        except Exception as e:
-            raise HTTPException(status_code=400, detail=f"Gagal mengunduh gambar: {str(e)}")
-        
-        rubric_list = get_rubric_vision(image_bytes)
-        
-        return {
-            "assignment_id": req.assignment_id,
-            "rubric": rubric_list
-        }
+        if req.image_url:
+            try:
+                image_bytes = _download_image(req.image_url)
+            except Exception as e:
+                raise HTTPException(status_code=400, detail=f"Gagal mengunduh gambar: {str(e)}")
+            
+            rubric_list = get_rubric_vision(image_bytes)
+            return {
+                "assignment_id": req.assignment_id,
+                "rubric": rubric_list
+            }
+        elif req.pdf_url:
+            try:
+                pdf_bytes = _download_pdf(req.pdf_url)
+            except Exception as e:
+                raise HTTPException(status_code=400, detail=f"Gagal mengunduh PDF: {str(e)}")
+            
+            rubric_list = extract_rubric_vision(pdf_bytes)
+            return {
+                "assignment_id": req.assignment_id,
+                "rubric": rubric_list
+            }
+    
     elif req.assignment_id == "essay_rubric":
         if req.pdf_url:
             try:
